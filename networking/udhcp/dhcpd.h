@@ -38,6 +38,7 @@ struct server_data_t {
 	uint32_t max_lease_sec;         /* maximum lease time (host order) */
 	uint32_t min_lease_sec;         /* minimum lease time a client can request */
 	uint32_t max_leases;            /* maximum number of leases (including reserved addresses) */
+	uint32_t max_lease; 		/* maximum number of reqest for lease per <mac,IP>*/
 	uint32_t auto_time;             /* how long should udhcpd wait before writing a config file.
 	                                 * if this is zero, it will only write one on SIGUSR1 */
 	uint32_t decline_time;          /* how long an address is reserved if a client returns a
@@ -73,6 +74,7 @@ struct dyn_lease {
 	 * When written to file, converted to network order
 	 * and adjusted (current time subtracted) */
 	leasetime_t expires;
+	uint32_t lease_times;
 	/* "nip": IP in network order */
 	uint32_t lease_nip;
 	/* We use lease_mac[6], since e.g. ARP probing uses

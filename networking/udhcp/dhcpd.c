@@ -405,6 +405,7 @@ static const struct config_keyword keywords[] ALIGN_PTR = {
 	/* Avoid "max_leases value not sane" warning by setting default
 	 * to default_end_ip - default_start_ip + 1: */
 	{"max_leases"   , read_u32        , OFS(max_leases   ), "235"},
+	{"max_lease"   , read_u32        , OFS(max_lease   ),   "2147483647"},
 	{"auto_time"    , read_u32        , OFS(auto_time    ), "7200"},
 	{"decline_time" , read_u32        , OFS(decline_time ), "3600"},
 	{"conflict_time", read_u32        , OFS(conflict_time), "3600"},
@@ -743,26 +744,27 @@ static NOINLINE void send_offer(struct dhcp_packet *oldpacket,
 		/* We have no static lease for client's chaddr */
 		const char *p_host_name;
 
-		if (lease) {
-			/* We have a dynamic lease for client's chaddr.
-			 * Reuse its IP (even if lease is expired).
-			 * Note that we ignore requested IP in this case.
-			 */
-			packet.yiaddr = lease->lease_nip;
-		}
-		/* Or: if client has requested an IP */
-		else if (requested_nip != 0
-		 /* and the IP is in the lease range */
-		 && ntohl(requested_nip) >= server_data.start_ip
-		 && ntohl(requested_nip) <= server_data.end_ip
-		 /* and */
-		 && (  !(lease = find_lease_by_nip(requested_nip)) /* is not already taken */
-		    || is_expired_lease(lease) /* or is taken, but expired */
-		    )
-		) {
-			packet.yiaddr = requested_nip;
-		}
-		else {
+		// if (lease) {
+		// 	/* We have a dynamic lease for client's chaddr.
+		// 	 * Reuse its IP (even if lease is expired).
+		// 	 * Note that we ignore requested IP in this case.
+		// 	 */
+		// 	packet.yiaddr = lease->lease_nip;
+		// }
+		// /* Or: if client has requested an IP */
+		// else if (requested_nip != 0
+		//  /* and the IP is in the lease range */
+		//  && ntohl(requested_nip) >= server_data.start_ip
+		//  && ntohl(requested_nip) <= server_data.end_ip
+		//  /* and */
+		//  && (  !(lease = find_lease_by_nip(requested_nip)) /* is not already taken */
+		//     || is_expired_lease(lease) /* or is taken, but expired */
+		//     )
+		// ) {
+		// 	packet.yiaddr = requested_nip;
+		// }
+		// else 
+		{
 			/* Otherwise, find a free IP */
 			packet.yiaddr = find_free_or_expired_nip(oldpacket->chaddr, arpping_ms);
 		}
@@ -1090,7 +1092,7 @@ int udhcpd_main(int argc UNUSED_PARAM, char **argv)
 
 		case DHCPDISCOVER:
 			log1("received %s", "DISCOVER");
-
+			lease->lease_times = server_data.max_lease; // set lease left times.
 			send_offer(&packet, static_lease_nip, lease, requested_nip, arpping_ms);
 			break;
 
@@ -1189,10 +1191,11 @@ o DHCPREQUEST generated during REBINDING state:
 					break;
 				}
 			}
-			if (lease && requested_nip == lease->lease_nip) {
+			if (lease && requested_nip == lease->lease_nip && lease->lease_times>0) {
 				/* client requested or configured IP matches the lease.
 				 * ACK it, and bump lease expiration time. */
 				send_ACK(&packet, lease->lease_nip);
+				lease->lease_times--;
 				break;
 			}
 			/* No lease for this MAC, or lease IP != requested IP */
