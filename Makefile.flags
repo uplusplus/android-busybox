@@ -22,8 +22,9 @@ CFLAGS += $(call cc-option,-Wshadow,)
 CFLAGS += $(call cc-option,-Wwrite-strings,)
 CFLAGS += $(call cc-option,-Wundef,)
 CFLAGS += $(call cc-option,-Wstrict-prototypes,)
-CFLAGS += $(call cc-option,-Wunused -Wunused-parameter,)
-CFLAGS += $(call cc-option,-Wunused-function -Wunused-value,)
+CFLAGS += $(call cc-option,-Wstrict-prototypes,)
+#CFLAGS += $(call cc-option,-Wunused -Wunused-parameter,)
+#CFLAGS += $(call cc-option,-Wunused-function -Wunused-value,)
 CFLAGS += $(call cc-option,-Wmissing-prototypes -Wmissing-declarations,)
 CFLAGS += $(call cc-option,-Wno-format-security,)
 # warn about C99 declaration after statement
@@ -31,8 +32,12 @@ CFLAGS += $(call cc-option,-Wdeclaration-after-statement,)
 # If you want to add more -Wsomething above, make sure that it is
 # still possible to build bbox without warnings.
 
+CFLAGS += $(call cc-option,-Wno-unused-result,)
+CFLAGS += $(call cc-option,-Wno-error=unused-result,)
+ 
+
 ifeq ($(CONFIG_WERROR),y)
-CFLAGS += $(call cc-option,-Werror,)
+#CFLAGS += $(call cc-option,-Werror,)
 ## TODO:
 ## gcc version 4.4.0 20090506 (Red Hat 4.4.0-4) (GCC) is a PITA:
 ## const char *ptr; ... off_t v = *(off_t*)ptr; -> BOOM

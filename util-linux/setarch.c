@@ -95,7 +95,7 @@ int setarch_main(int argc UNUSED_PARAM, char **argv)
 
 	argv += optind;
 	if (!argv[0])
-		(--argv)[0] = (char*)"/bin/sh";
+		(--argv)[0] = (char*)"/system/bin/sh";
 
 	/* Try to execute the program */
 	BB_EXECVP_or_die(argv);
