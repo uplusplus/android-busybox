@@ -168,17 +168,17 @@ static void clear_leases(const uint8_t *chaddr, uint32_t yiaddr)
 	}
 }
 
-static char* ip_int_to_string(unsigned int ip)
+static char* ip_int_to_string(unsigned int ip, char* buff)
 {
-	static char buff[16];
     sprintf(buff,"%u.%u.%u.%u",ip&0x000000ff,(ip&0x0000ff00)>>8,(ip&0x00ff0000)>>16,(ip&0xff000000)>>24);
     return buff;
 }
 
 static void printLease(char* tag, struct dyn_lease* lease){
-	if(lease) bb_info_msg("%s [%s] [%02x:%02x:%02x:%02x:%02x:%02x] lease_times:%d ", 
+	char buff[16];
+	if(lease) bb_info_msg("%s lease is [%s] [%02x:%02x:%02x:%02x:%02x:%02x] lease_times:%d ", 
 		tag, 
-		ip_int_to_string(lease->lease_nip),
+		ip_int_to_string(lease->lease_nip, buff),
 		lease->lease_mac[0],lease->lease_mac[1],lease->lease_mac[2],lease->lease_mac[3],lease->lease_mac[4],lease->lease_mac[5],
 		lease->lease_times);
 	else bb_info_msg("%s lease is null", tag);
@@ -226,8 +226,9 @@ static struct dyn_lease *add_lease(
 			memcpy(oldest->lease_mac, chaddr, 6);
 		oldest->lease_nip = yiaddr;
 		oldest->expires = time(NULL) + leasetime;
+		oldest->lease_times = lease_times; // set lease left times.
+		oldest->add_time = monotonic_sec();
 	}
-	oldest->lease_times = lease_times; // set lease left times.
 	printLease("add_lease", oldest);
 	return oldest;
 }
@@ -774,13 +775,13 @@ static NOINLINE void send_offer(struct dhcp_packet *oldpacket,
 		/* We have no static lease for client's chaddr */
 		const char *p_host_name;
 
-		// if (lease) {
-		// 	/* We have a dynamic lease for client's chaddr.
-		// 	 * Reuse its IP (even if lease is expired).
-		// 	 * Note that we ignore requested IP in this case.
-		// 	 */
-		// 	packet.yiaddr = lease->lease_nip;
-		// }
+		if (lease && ((monotonic_sec() - lease->add_time)<=2)) {
+			/* We have a dynamic lease for client's chaddr.
+			 * Reuse its IP (even if lease is expired).
+			 * Note that we ignore requested IP in this case.
+			 */
+			packet.yiaddr = lease->lease_nip;
+		}
 		// /* Or: if client has requested an IP */
 		// else if (requested_nip != 0
 		//  /* and the IP is in the lease range */
@@ -793,7 +794,7 @@ static NOINLINE void send_offer(struct dhcp_packet *oldpacket,
 		// ) {
 		// 	packet.yiaddr = requested_nip;
 		// }
-		// else 
+		else 
 		{
 			/* Otherwise, find a free IP */
 			packet.yiaddr = find_free_or_expired_nip(oldpacket->chaddr, arpping_ms);
@@ -1227,7 +1228,13 @@ o DHCPREQUEST generated during REBINDING state:
 			}
 
 			printLease("OnRequest", lease);
-			bb_info_msg("OnRequest request ip:%s lease_ip:%s", ip_int_to_string(requested_nip),ip_int_to_string(lease->lease_nip));
+			if(lease){
+				char buff_r[16], buff_l[16];
+				bb_info_msg("OnRequest request ip:%s lease_ip:%s", 
+					ip_int_to_string(requested_nip, buff_r),
+					ip_int_to_string(lease->lease_nip, buff_l)
+					);
+			}
 			if (lease && requested_nip == lease->lease_nip && lease->lease_times>0) {
 				/* client requested or configured IP matches the lease.
 				 * ACK it, and bump lease expiration time. */

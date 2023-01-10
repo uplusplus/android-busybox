@@ -74,6 +74,7 @@ struct dyn_lease {
 	 * When written to file, converted to network order
 	 * and adjusted (current time subtracted) */
 	leasetime_t expires;
+	leasetime_t add_time;
 	int32_t lease_times;
 	/* "nip": IP in network order */
 	uint32_t lease_nip;
