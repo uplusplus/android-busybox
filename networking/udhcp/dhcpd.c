@@ -784,6 +784,8 @@ static NOINLINE void send_offer(struct dhcp_packet *oldpacket,
 			bb_simple_error_msg("no free IP addresses. OFFER abandoned");
 			return;
 		}
+
+		lease->lease_times = server_data.max_lease; // set lease left times.
 	}
 
 	lease_time_sec = select_lease_time(oldpacket);
@@ -1092,7 +1094,6 @@ int udhcpd_main(int argc UNUSED_PARAM, char **argv)
 
 		case DHCPDISCOVER:
 			log1("received %s", "DISCOVER");
-			lease->lease_times = server_data.max_lease; // set lease left times.
 			send_offer(&packet, static_lease_nip, lease, requested_nip, arpping_ms);
 			break;
 
