@@ -74,7 +74,7 @@ struct dyn_lease {
 	 * When written to file, converted to network order
 	 * and adjusted (current time subtracted) */
 	leasetime_t expires;
-	uint32_t lease_times;
+	int32_t lease_times;
 	/* "nip": IP in network order */
 	uint32_t lease_nip;
 	/* We use lease_mac[6], since e.g. ARP probing uses

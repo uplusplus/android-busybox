@@ -168,13 +168,29 @@ static void clear_leases(const uint8_t *chaddr, uint32_t yiaddr)
 	}
 }
 
+static char* ip_int_to_string(unsigned int ip)
+{
+	static char buff[16];
+    sprintf(buff,"%u.%u.%u.%u",ip&0x000000ff,(ip&0x0000ff00)>>8,(ip&0x00ff0000)>>16,(ip&0xff000000)>>24);
+    return buff;
+}
+
+static void printLease(char* tag, struct dyn_lease* lease){
+	if(lease) bb_info_msg("%s [%s] [%02x:%02x:%02x:%02x:%02x:%02x] lease_times:%d ", 
+		tag, 
+		ip_int_to_string(lease->lease_nip),
+		lease->lease_mac[0],lease->lease_mac[1],lease->lease_mac[2],lease->lease_mac[3],lease->lease_mac[4],lease->lease_mac[5],
+		lease->lease_times);
+	else bb_info_msg("%s lease is null", tag);
+}
+
 /* Add a lease into the table, clearing out any old ones.
  * If chaddr == NULL, this is a conflict lease.
  */
 static struct dyn_lease *add_lease(
 		const uint8_t *chaddr, uint32_t yiaddr,
 		leasetime_t leasetime,
-		const char *hostname, int hostname_len)
+		const char *hostname, int hostname_len, int lease_times)
 {
 	struct dyn_lease *oldest;
 
@@ -211,7 +227,8 @@ static struct dyn_lease *add_lease(
 		oldest->lease_nip = yiaddr;
 		oldest->expires = time(NULL) + leasetime;
 	}
-
+	oldest->lease_times = lease_times; // set lease left times.
+	printLease("add_lease", oldest);
 	return oldest;
 }
 
@@ -262,9 +279,18 @@ static int nobody_responds_to_arp(uint32_t nip, const uint8_t *safe_mac, unsigne
 	temp.s_addr = nip;
 	bb_info_msg("%s belongs to someone, reserving it for %u seconds",
 		inet_ntoa(temp), (unsigned)server_data.conflict_time);
-	add_lease(NULL, nip, server_data.conflict_time, NULL, 0);
+	add_lease(NULL, nip, server_data.conflict_time, NULL, 0, server_data.max_lease);
 	return 0;
 }
+
+ 
+#define RANDOM_IP_ADDRESS 1
+
+#ifdef RANDOM_IP_ADDRESS
+uint32_t nextAddress(uint32_t start, uint32_t end){
+	return rand() % (end-start+1)+start;
+} 
+#endif
 
 /* Find a new usable (we think) address */
 static uint32_t find_free_or_expired_nip(const uint8_t *safe_mac, unsigned arpping_ms)
@@ -286,6 +312,10 @@ static uint32_t find_free_or_expired_nip(const uint8_t *safe_mac, unsigned arppi
 	/* pick a seed based on hwaddr then iterate until we find a free address. */
 	addr = server_data.start_ip
 		+ (hash % (1 + server_data.end_ip - server_data.start_ip));
+	stop = addr;
+#elif RANDOM_IP_ADDRESS
+	uint32_t stop;
+	addr = nextAddress(server_data.start_ip, server_data.end_ip);
 	stop = addr;
 #else
 	addr = server_data.start_ip;
@@ -319,7 +349,7 @@ static uint32_t find_free_or_expired_nip(const uint8_t *safe_mac, unsigned arppi
 		}
 
  next_addr:
-		addr++;
+ 		addr++;
 #if ENABLE_FEATURE_UDHCPD_BASE_IP_ON_MAC
 		if (addr > server_data.end_ip)
 			addr = server_data.start_ip;
@@ -554,7 +584,7 @@ static NOINLINE void read_leases(const char *file)
 			 * lease duration, not lease deadline. */
 			if (add_lease(lease.lease_mac, lease.lease_nip,
 					expires,
-					lease.hostname, sizeof(lease.hostname)
+					lease.hostname, sizeof(lease.hostname), server_data.max_lease
 				) == 0
 			) {
 				bb_error_msg("too many leases while loading %s", file);
@@ -778,14 +808,13 @@ static NOINLINE void send_offer(struct dhcp_packet *oldpacket,
 		lease = add_lease(packet.chaddr, packet.yiaddr,
 				server_data.offer_time,
 				p_host_name,
-				p_host_name ? (unsigned char)p_host_name[OPT_LEN - OPT_DATA] : 0
+				p_host_name ? (unsigned char)p_host_name[OPT_LEN - OPT_DATA] : 0,
+				server_data.max_lease
 		);
 		if (!lease) {
 			bb_simple_error_msg("no free IP addresses. OFFER abandoned");
 			return;
 		}
-
-		lease->lease_times = server_data.max_lease; // set lease left times.
 	}
 
 	lease_time_sec = select_lease_time(oldpacket);
@@ -803,7 +832,7 @@ static NOINLINE void send_NAK(struct dhcp_packet *oldpacket)
 
 	init_packet(&packet, oldpacket, DHCPNAK);
 
-	log1("sending %s", "NAK");
+	bb_info_msg("sending %s", "NAK");
 	send_packet(&packet, /*force_bcast:*/ 1);
 }
 
@@ -827,7 +856,8 @@ static NOINLINE void send_ACK(struct dhcp_packet *oldpacket, uint32_t yiaddr)
 	add_lease(packet.chaddr, packet.yiaddr,
 		lease_time_sec,
 		p_host_name,
-		p_host_name ? (unsigned char)p_host_name[OPT_LEN - OPT_DATA] : 0
+		p_host_name ? (unsigned char)p_host_name[OPT_LEN - OPT_DATA] : 0,
+		0
 	);
 	if (ENABLE_FEATURE_UDHCPD_WRITE_LEASES_EARLY) {
 		/* rewrite the file with leases at every new acceptance */
@@ -938,6 +968,9 @@ int udhcpd_main(int argc UNUSED_PARAM, char **argv)
 	/* if (!..) bb_perror_msg("can't create pidfile %s", pidfile); */
 
 	bb_simple_info_msg("started, v"BB_VER);
+
+	bb_info_msg("max client:%u max lease time:%u\n", server_data.max_leases, server_data.max_lease);
+
 
 	option = udhcp_find_option(server_data.options, DHCP_LEASE_TIME, /*dhcpv6:*/ 0);
 	server_data.max_lease_sec = DEFAULT_LEASE_TIME;
@@ -1093,12 +1126,12 @@ int udhcpd_main(int argc UNUSED_PARAM, char **argv)
 		switch (msg_type[0]) {
 
 		case DHCPDISCOVER:
-			log1("received %s", "DISCOVER");
+			bb_info_msg("received %s", "DISCOVER");
 			send_offer(&packet, static_lease_nip, lease, requested_nip, arpping_ms);
 			break;
 
 		case DHCPREQUEST:
-			log1("received %s", "REQUEST");
+			bb_info_msg("received %s", "REQUEST");
 /* RFC 2131:
 
 o DHCPREQUEST generated during SELECTING state:
@@ -1192,6 +1225,9 @@ o DHCPREQUEST generated during REBINDING state:
 					break;
 				}
 			}
+
+			printLease("OnRequest", lease);
+			bb_info_msg("OnRequest request ip:%s lease_ip:%s", ip_int_to_string(requested_nip),ip_int_to_string(lease->lease_nip));
 			if (lease && requested_nip == lease->lease_nip && lease->lease_times>0) {
 				/* client requested or configured IP matches the lease.
 				 * ACK it, and bump lease expiration time. */
