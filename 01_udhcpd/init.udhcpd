@@ -1,4 +1,11 @@
+cd `dirname $0`
+basepath=$(pwd)
 ndc tether stop
-sed -i "s/p2p-p2p0-[0-9]*/$(ifconfig |grep p2p-p2p|awk -F" " '{print $1}')/g" /sdcard/udhcpd.conf
-/system/bin/udhcpd -f /sdcard/udhcpd.conf
+pkill udhcpd
+touch udhcpd.leases
+sed -i "s/interface .*\$/interface $(ifconfig |grep p2p-p2p|awk -F" " '{print $1}')/g"  udhcpd.conf
+chmod +x udhcpd
+export LD_LIBRARY_PATH=/system/lib/
+${basepath}/udhcpd -f ${basepath}/udhcpd.conf &
+
 
