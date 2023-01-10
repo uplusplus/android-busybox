@@ -1,0 +1,4 @@
+ndc tether stop
+sed -i "s/p2p-p2p0-[0-9]*/$(ifconfig |grep p2p-p2p|awk -F" " '{print $1}')/g" /sdcard/udhcpd.conf
+/system/bin/udhcpd -f /sdcard/udhcpd.conf
+

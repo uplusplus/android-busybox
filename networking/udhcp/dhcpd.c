@@ -289,6 +289,7 @@ static int nobody_responds_to_arp(uint32_t nip, const uint8_t *safe_mac, unsigne
 
 #ifdef RANDOM_IP_ADDRESS
 uint32_t nextAddress(uint32_t start, uint32_t end){
+	srand(monotonic_ms()); /*根据当前时间设置“随机数种子”*/
 	return rand() % (end-start+1)+start;
 } 
 #endif
