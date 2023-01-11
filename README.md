@@ -2,9 +2,10 @@
 * bash 01_udhcpd/build.sh -a arm 
 * bash 01_udhcpd/build.sh -a arm64
  
-#具体配置见 [ANDROID.md](./ANDROID.md)
+# 具体配置见 [ANDROID.md](./ANDROID.md)
 
 
+----------------
 Please see the LICENSE file for details on copying and usage.
 Please refer to the INSTALL file for instructions on how to build.
 
