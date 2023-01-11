@@ -1,6 +1,5 @@
 # 步骤
 
-*arm32*
 ## 下载指定NDK
 sudo apt-get install axle
 axel "https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip"
@@ -9,7 +8,7 @@ unzip android-ndk-r21e-linux-x86_64.zip -d ndk
 ## 生成及修改Toolchain
 cd ndk/android-ndk-r21e/
 ./build/tools/make_standalone_toolchain.py --arch arm --api 21 --install-dir ~/arm-linux-androideabi
-vi ~/arm-linux-androideabi/sysroot/usr/include/android/api-level.h
+./build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir ~/aarch64-linux-android
 
 ## 配置Toolchain
 export PATH=$PATH:$HOME/arm-linux-androideabi/bin
@@ -100,14 +99,6 @@ index cf8ef0064..efb7da29c 100644
         /* Try to execute the program */
         BB_EXECVP_or_die(argv);
 ```
-
-*arm64*
-差异：
-1、工具链
-./build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir ~/aarch64-linux-android
-
-2、make menuconfig 
-修改cross compile为aarch64-linux-android-
 
 # 编译脚本使用
 bash 01_udhcpd/build.sh -a arm 
