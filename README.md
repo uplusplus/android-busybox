@@ -1,6 +1,6 @@
 # 编译脚本使用
-bash 01_udhcpd/build.sh -a arm 
-bash 01_udhcpd/build.sh -a arm64
+* bash 01_udhcpd/build.sh -a arm 
+* bash 01_udhcpd/build.sh -a arm64
  
 #具体配置见 [ANDROID.md](./ANDROID.md)
 
