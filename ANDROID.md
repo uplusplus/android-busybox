@@ -1,4 +1,6 @@
 # 步骤
+
+*arm32*
 ## 下载指定NDK
 sudo apt-get install axle
 axel "https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip"
@@ -99,6 +101,17 @@ index cf8ef0064..efb7da29c 100644
         BB_EXECVP_or_die(argv);
 ```
 
+*arm64*
+差异：
+1、工具链
+./build/tools/make_standalone_toolchain.py --arch arm64 --api 21 --install-dir ~/aarch64-linux-android
+
+2、make menuconfig 
+修改cross compile为aarch64-linux-android-
+
+# 编译脚本使用
+bash 01_udhcpd/build.sh -a arm 
+bash 01_udhcpd/build.sh -a arm64
 
 
 # Native bionic (Android) port of Busybox
