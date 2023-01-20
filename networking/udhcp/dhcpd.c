@@ -284,8 +284,6 @@ static int nobody_responds_to_arp(uint32_t nip, const uint8_t *safe_mac, unsigne
 	return 0;
 }
 
- 
-#define RANDOM_IP_ADDRESS 1
 
 #ifdef RANDOM_IP_ADDRESS
 uint32_t nextAddress(uint32_t start, uint32_t end){
@@ -315,7 +313,7 @@ static uint32_t find_free_or_expired_nip(const uint8_t *safe_mac, unsigned arppi
 	addr = server_data.start_ip
 		+ (hash % (1 + server_data.end_ip - server_data.start_ip));
 	stop = addr;
-#elif RANDOM_IP_ADDRESS
+#elif defined(RANDOM_IP_ADDRESS)
 	uint32_t stop;
 	addr = nextAddress(server_data.start_ip, server_data.end_ip);
 	stop = addr;
@@ -1236,6 +1234,7 @@ o DHCPREQUEST generated during REBINDING state:
 					ip_int_to_string(lease->lease_nip, buff_l)
 					);
 			}
+#ifdef RANDOM_IP_ADDRESS
 			if (lease && requested_nip == lease->lease_nip && lease->lease_times>0) {
 				/* client requested or configured IP matches the lease.
 				 * ACK it, and bump lease expiration time. */
@@ -1243,6 +1242,14 @@ o DHCPREQUEST generated during REBINDING state:
 				lease->lease_times--;
 				break;
 			}
+#else
+			if (lease && requested_nip == lease->lease_nip) {
+				/* client requested or configured IP matches the lease.
+				 * ACK it, and bump lease expiration time. */
+				send_ACK(&packet, lease->lease_nip);
+				break;
+			}
+#endif
 			/* No lease for this MAC, or lease IP != requested IP */
 
 			if (server_id_opt    /* client is in SELECTING state */

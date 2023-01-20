@@ -14,6 +14,7 @@ PUSH_AND_SET_FUNCTION_VISIBILITY_TO_HIDDEN
 /* Where to find the DHCP server configuration file */
 #define DHCPD_CONF_FILE         "/etc/udhcpd.conf"
 
+#define RANDOM_IP_ADDRESS
 
 struct static_lease;
 
@@ -75,7 +76,9 @@ struct dyn_lease {
 	 * and adjusted (current time subtracted) */
 	leasetime_t expires;
 	leasetime_t add_time;
+#ifdef RANDOM_IP_ADDRESS
 	int32_t lease_times;
+#endif
 	/* "nip": IP in network order */
 	uint32_t lease_nip;
 	/* We use lease_mac[6], since e.g. ARP probing uses
